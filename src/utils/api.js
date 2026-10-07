@@ -1,11 +1,18 @@
 export async function api(path, options = {}) {
-  const response = await fetch('/api' + path, {
+  const origin = (
+    import.meta.env.VITE_API_ORIGIN ||
+    (import.meta.env.DEV ? `http://${location.hostname}:3000` : '')
+  ).replace(/\/$/, '');
+  const response = await fetch(origin + '/api' + path, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    credentials: 'same-origin',
+    credentials: 'include',
     body: options.body === undefined ? undefined : JSON.stringify(options.body)
   });
-  const data = await response.json().catch(() => ({}));
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    throw new Error('API недоступен: сервер вернул ответ не в формате JSON');
+  }
+  const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Не удалось выполнить запрос');
   return data;
 }
