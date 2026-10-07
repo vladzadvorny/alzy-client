@@ -1,4 +1,9 @@
+import { useEffect } from 'preact/hooks';
+
+export const title = 'Alzy — AI-секретарь для малого бизнеса';
+
 export function Home() {
+  useEffect(() => { document.title = title; }, []);
   return <div class="product-page">
     <header class="product-header"><a href="/" class="product-logo"><span>✳</span> alzy</a><nav><a href="#how">Как работает</a><a href="#plans">Тарифы</a><a href="/demo">Живое демо</a></nav><a class="product-login" href="/app">Войти <span>↗</span></a></header>
     <main>

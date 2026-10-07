@@ -1,5 +1,7 @@
 import { useEffect } from 'preact/hooks';
 
+export const title = 'Студия Линия — запись онлайн';
+
 const services = [
   { number: '01', title: 'Стрижка', detail: 'Форма, в которой узнаёте себя', price: 'от 2 500 ₽' },
   { number: '02', title: 'Укладка', detail: 'Для обычного дня и особого случая', price: 'от 2 000 ₽' },
@@ -7,6 +9,7 @@ const services = [
 ];
 
 export function Demo() {
+  useEffect(() => { document.title = title; }, []);
   useEffect(() => {
     if (window.AlzyWidget) {
       window.AlzyWidget.mount();

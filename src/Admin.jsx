@@ -45,6 +45,7 @@ function SectionIcon({ name }) {
 }
 
 export function Admin() {
+  useEffect(() => { document.title = 'Alzy — AI-секретарь для малого бизнеса'; }, []);
   const [auth, setAuth] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

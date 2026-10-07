@@ -1,24 +1,50 @@
-import { render } from 'preact';
-import { Chat } from './Chat.jsx';
-import { Demo } from './Demo.jsx';
+import { LocationProvider, Router, Route, hydrate, prerender as renderStatic } from 'preact-iso';
+import { Demo, title as demoTitle } from './Demo.jsx';
 import { Admin } from './Admin.jsx';
-import { Home } from './Home.jsx';
+import { Home, title as homeTitle } from './Home.jsx';
 import { Register } from './Register.jsx';
 import { Platform } from './Platform.jsx';
+import { Booking, Widget } from './Booking.jsx';
+import { NotFound } from './NotFound.jsx';
 import './styles.css';
 
 function App() {
-  const path = window.location.pathname;
-  document.title = path === '/demo' ? 'Студия Линия — запись онлайн' : path.includes('/book') ? 'Онлайн-запись — Alzy' : 'Alzy — AI-секретарь для малого бизнеса';
-  const match = path.match(/^\/b\/([a-z0-9-]+)\/(book|widget)$/);
-  const slug = match?.[1] || 'demo';
-  if (match?.[2] === 'widget' || path === '/widget') return <Chat compact slug={slug} />;
-  if (match?.[2] === 'book' || path === '/book') return <div class="book-page"><header><a href="/" class="product-logo"><span>✳</span> alzy</a><a href={slug === 'demo' ? '/demo' : '/'}>← На главную</a></header><main><div class="book-intro"><div class="eyebrow"><span /> ОНЛАЙН-ЗАПИСЬ</div><h1>Ваш визит<br /><em>начинается здесь.</em></h1><p>Выберите услугу и свободное время. Секретарь поможет с записью.</p></div><Chat slug={slug} /></main></div>;
-  if (path === '/register') return <Register />;
-  if (path.startsWith('/app') || path.startsWith('/admin')) return <Admin />;
-  if (path.startsWith('/platform')) return <Platform />;
-  if (path === '/demo') return <Demo />;
-  return <Home />;
+  return <LocationProvider><Router>
+    <Route path="/" component={Home} />
+    <Route path="/demo" component={Demo} />
+    <Route path="/register" component={Register} />
+    <Route path="/app/:rest*" component={Admin} />
+    <Route path="/admin/:rest*" component={Admin} />
+    <Route path="/platform/:rest*" component={Platform} />
+    <Route path="/b/:slug/book" component={Booking} />
+    <Route path="/b/:slug/widget" component={Widget} />
+    <Route path="/book" component={Booking} />
+    <Route path="/widget" component={Widget} />
+    <Route default component={NotFound} />
+  </Router></LocationProvider>;
 }
 
-render(<App />, document.getElementById('app'));
+if (typeof window !== 'undefined') {
+  const root = document.getElementById('app');
+  const data = document.getElementById('prerender-data');
+  const prerenderedPath = data && new URL(JSON.parse(data.textContent).url, location.origin).pathname;
+  const normalizePath = path => path.replace(/\/+$/, '') || '/';
+  if (prerenderedPath && normalizePath(prerenderedPath) !== normalizePath(location.pathname)) {
+    // Vite preview can use the prerendered home page as an SPA fallback.
+    root.replaceChildren();
+  }
+  hydrate(<App />, root);
+}
+
+export async function prerender(data) {
+  const result = await renderStatic(<App />);
+  return {
+    ...result,
+    links: new Set(),
+    data: { url: data.url },
+    head: {
+      lang: 'ru',
+      title: data.url === '/demo' ? demoTitle : homeTitle
+    }
+  };
+}

@@ -8,7 +8,9 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "preact": "^10.27.0"
+    "preact": "^10.27.0",
+    "preact-iso": "^2.12.2",
+    "preact-render-to-string": "^6.8.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.0",

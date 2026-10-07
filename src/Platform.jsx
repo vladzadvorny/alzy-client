@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api } from './api.js';
 
 export function Platform() {
+  useEffect(() => { document.title = 'Alzy — AI-секретарь для малого бизнеса'; }, []);
   const [auth, setAuth] = useState(null);
   const [password, setPassword] = useState('');
   const [requests, setRequests] = useState([]);
