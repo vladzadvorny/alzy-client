@@ -1,11 +1,7 @@
-# Alzy · клиент
+# Клиент Alzy
 
-Preact и Vite: демонстрационная страница /demo, отдельный чат /book, чат для iframe /widget и кабинет /admin.
+Preact и Vite. Главная `/` — лендинг CRM, `/demo` — сайт студии «Линия», `/register` — регистрация, `/app` — кабинет владельца, `/platform` — кабинет платформы. Личные страницы записи и виджеты расположены по `/b/SLUG/book` и `/b/SLUG/widget`.
 
-Для разработки: npm install, затем npm run dev (Koa API должен работать на порту 3000). Для сборки: npm run build; Koa отдаёт результат из client/dist.
+Запуск: `npm install && npm run dev` при работающем Koa на порту 3000. Сборка: `npm run build`; Koa отдаёт `dist`.
 
-Чтобы показать чат на другом сайте, вставьте в его HTML:
-
-    <script src="https://YOUR-DOMAIN/embed.js" data-auto="true" defer></script>
-
-Скрипт создаёт кнопку и iframe со страницей /widget. Административный пароль и ключ DeepSeek никогда не загружаются в браузер.
+Код виджета генерируется в кабинете. Он вставляет iframe с публичной страницей компании. Общие инструкции находятся в [корневом README](../README.md).

@@ -4,6 +4,11 @@ import { api, formatDate, formatMoment, todayMoscow } from './api.js';
 const weekdays = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const today = todayMoscow();
 
+function toKopecks(value) {
+  const parts = String(value).match(/^(\d+)(?:\.(\d{1,2}))?$/);
+  return parts ? Number(parts[1]) * 100 + Number((parts[2] || '').padEnd(2, '0')) : 0;
+}
+
 function monthShift(month, amount) {
   const [year, number] = month.split('-').map(Number);
   const date = new Date(Date.UTC(year, number - 1 + amount, 1));
@@ -24,6 +29,7 @@ function ErrorNote({ text }) {
 
 export function Admin() {
   const [auth, setAuth] = useState(null);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [tab, setTab] = useState('calendar');
   const [month, setMonth] = useState(today.slice(0, 7));
@@ -33,6 +39,11 @@ export function Admin() {
   const [blocks, setBlocks] = useState([]);
   const [services, setServices] = useState([]);
   const [business, setBusiness] = useState(null);
+  const [subscription, setSubscription] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [finance, setFinance] = useState(null);
+  const [entry, setEntry] = useState({ kind: 'expense', amount: '', description: '', date: today });
+  const [paidAmounts, setPaidAmounts] = useState({});
   const [hours, setHours] = useState([]);
   const [newService, setNewService] = useState({ name: '', duration_min: 60, price_rub: '' });
   const [bookingForm, setBookingForm] = useState({ service_id: '', date: today, start: '', client_name: '', phone: '' });
@@ -43,8 +54,18 @@ export function Admin() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api('/admin/me').then(() => setAuth(true)).catch(() => setAuth(false));
+    api('/admin/me').then(result => { setAuth(true); setSubscription(result.subscription); }).catch(() => setAuth(false));
   }, []);
+
+  async function loadSubscription() {
+    const result = await api('/admin/subscription');
+    setSubscription(result.subscription);
+    setRequests(result.requests);
+  }
+
+  async function loadFinance() {
+    setFinance(await api(`/admin/finance?month=${month}`));
+  }
 
   async function loadSettings() {
     const [serviceResult, businessResult, hoursResult] = await Promise.all([
@@ -80,12 +101,22 @@ export function Admin() {
   }, [auth, month, day]);
 
   useEffect(() => {
-    if (auth !== true || !bookingForm.service_id || !bookingForm.date) return;
+    if (auth !== true) return;
+    loadSubscription().catch(cause => setError(cause.message));
+  }, [auth]);
+
+  useEffect(() => {
+    if (auth !== true || tab !== 'finance') return;
+    loadFinance().catch(cause => setError(cause.message));
+  }, [auth, tab, month]);
+
+  useEffect(() => {
+    if (auth !== true || !business?.slug || !bookingForm.service_id || !bookingForm.date) return;
     setSlots([]);
-    api(`/public/availability?serviceId=${bookingForm.service_id}&date=${bookingForm.date}`)
+    api(`/public/${business.slug}/availability?serviceId=${bookingForm.service_id}&date=${bookingForm.date}`)
       .then(result => setSlots(result.slots))
       .catch(() => setSlots([]));
-  }, [auth, bookingForm.service_id, bookingForm.date, counts, blocks]);
+  }, [auth, business?.slug, bookingForm.service_id, bookingForm.date, counts, blocks]);
 
   async function run(task, success) {
     setSaving(true);
@@ -104,7 +135,7 @@ export function Admin() {
   async function login(event) {
     event.preventDefault();
     await run(async () => {
-      await api('/admin/login', { method: 'POST', body: { password } });
+      await api('/auth/login', { method: 'POST', body: { email, password } });
       setPassword('');
       setAuth(true);
     });
@@ -112,7 +143,8 @@ export function Admin() {
 
   async function logout() {
     await run(async () => {
-      await api('/admin/logout', { method: 'POST' });
+      await api('/auth/logout', { method: 'POST' });
+      setEmail('');
       setAuth(false);
     });
   }
@@ -126,6 +158,30 @@ export function Admin() {
       setBookingForm(previous => ({ ...previous, start: '', client_name: '', phone: '' }));
       await loadCalendar(bookingForm.start.slice(0, 7), bookingForm.start.slice(0, 10));
     }, 'Запись добавлена');
+  }
+
+  async function requestActivation(plan) {
+    await run(async () => {
+      await api('/admin/activation-requests', { method: 'POST', body: { plan } });
+      await loadSubscription();
+    }, 'Запрос отправлен администратору платформы');
+  }
+
+  async function addTransaction(event) {
+    event.preventDefault();
+    await run(async () => {
+      await api('/admin/finance', { method: 'POST', body: { kind: entry.kind, amount_kopecks: toKopecks(entry.amount), description: entry.description, date: entry.date } });
+      setEntry({ kind: 'expense', amount: '', description: '', date: today });
+      await loadFinance();
+    }, 'Операция добавлена');
+  }
+
+  async function markPaid(item) {
+    await run(async () => {
+      await api(`/admin/bookings/${item.id}/paid`, { method: 'POST', body: { amount_kopecks: toKopecks(paidAmounts[item.id] || '') } });
+      await loadCalendar();
+      if (tab === 'finance') await loadFinance();
+    }, 'Оплата учтена');
   }
 
   async function cancelBooking(id) {
@@ -201,14 +257,16 @@ export function Admin() {
   if (auth === null) return <div class="admin-loading">Загружаем кабинет…</div>;
   if (auth === false) return (
     <div class="login-page">
-      <a href="/demo" class="wordmark"><span class="wordmark-mark">✳</span> линия<span class="wordmark-period">.</span></a>
+      <a href="/" class="product-logo"><span>✳</span> alzy</a>
       <form class="login-card" onSubmit={login}>
-        <div class="eyebrow"><span /> КАБИНЕТ СТУДИИ</div>
+        <div class="eyebrow"><span /> КАБИНЕТ КОМПАНИИ</div>
         <h1>С возвращением.</h1>
-        <p>Введите пароль администратора, чтобы открыть календарь записей.</p>
-        <label>Пароль<input type="password" value={password} onInput={event => setPassword(event.currentTarget.value)} placeholder="Пароль администратора" required /></label>
+        <p>Войдите, чтобы открыть календарь записей.</p>
+        <label>Email<input type="email" value={email} onInput={event => setEmail(event.currentTarget.value)} placeholder="you@company.ru" required /></label>
+        <label>Пароль<input type="password" value={password} onInput={event => setPassword(event.currentTarget.value)} placeholder="Пароль" required /></label>
         <ErrorNote text={error} />
         <button class="primary-button" disabled={saving} type="submit">Войти <span>→</span></button>
+        <p>Ещё нет аккаунта? <a href="/register" class="inline-link">Попробовать бесплатно</a></p>
       </form>
     </div>
   );
@@ -216,9 +274,11 @@ export function Admin() {
   return (
     <div class="admin-page">
       <aside class="admin-sidebar">
-        <a href="/demo" class="wordmark"><span class="wordmark-mark">✳</span> линия<span class="wordmark-period">.</span></a>
+        <a href="/" class="product-logo"><span>✳</span> alzy</a>
         <div class="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
         <button class={tab === 'calendar' ? 'side-link active' : 'side-link'} onClick={() => setTab('calendar')}><span>▦</span> Календарь</button>
+        <button class={tab === 'finance' ? 'side-link active' : 'side-link'} onClick={() => setTab('finance')}><span>₽</span> Финансы</button>
+        <button class={tab === 'subscription' ? 'side-link active' : 'side-link'} onClick={() => setTab('subscription')}><span>✦</span> Тариф</button>
         <button class={tab === 'settings' ? 'side-link active' : 'side-link'} onClick={() => setTab('settings')}><span>⚙</span> Настройки</button>
         <div class="sidebar-spacer" />
         <a class="side-link" href="/demo"><span>↗</span> Демо-страница</a>
@@ -226,11 +286,12 @@ export function Admin() {
       </aside>
 
       <main class="admin-main">
-        <div class="mobile-admin-nav"><span class="wordmark">✳ линия.</span><button onClick={() => setTab(tab === 'calendar' ? 'settings' : 'calendar')}>{tab === 'calendar' ? 'Настройки' : 'Календарь'}</button><button onClick={logout}>Выйти</button></div>
+        <div class="mobile-admin-nav"><span class="wordmark">✳ alzy</span>{['calendar', 'finance', 'subscription', 'settings'].map(item => <button class={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{({ calendar: 'Календарь', finance: 'Финансы', subscription: 'Тариф', settings: 'Настройки' })[item]}</button>)}<button onClick={logout}>Выйти</button></div>
         <div class="admin-content">
-          <div class="admin-heading"><div><div class="eyebrow"><span /> КАБИНЕТ СТУДИИ</div><h1>{tab === 'calendar' ? 'Календарь записей' : 'Настройки студии'}</h1></div><span class="admin-date">{formatDate(today, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+          <div class="admin-heading"><div><div class="eyebrow"><span /> {business?.name?.toUpperCase() || 'КАБИНЕТ КОМПАНИИ'}</div><h1>{({ calendar: 'Календарь записей', finance: 'Финансы', subscription: 'Тариф и доступ', settings: 'Настройки компании' })[tab]}</h1></div><span class="admin-date">{formatDate(today, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
           <ErrorNote text={error} />
           {notice && <div class="admin-notice">{notice}</div>}
+          {subscription && <div class="subscription-strip"><span>{subscription.mode === 'trial' ? 'Пробный период' : subscription.mode === 'paid' ? 'Тариф активен' : 'Доступ закончился'} · {subscription.plan === 'finance' ? 'Запись + финансы' : 'AI-запись'}</span><span>AI: {subscription.used} / {subscription.limit}</span><button onClick={() => setTab('subscription')}>Управлять →</button></div>}
 
           {tab === 'calendar' ? (
             <>
@@ -245,7 +306,7 @@ export function Admin() {
                 <section class="panel day-panel">
                   <div class="panel-header"><div><span class="panel-kicker">ЗАПИСИ НА ДЕНЬ</span><h2>{formatDate(day, { day: 'numeric', month: 'long' })}</h2></div><span class="day-count">{bookings.filter(item => item.status === 'confirmed').length}</span></div>
                   <div class="day-list">
-                    {bookings.filter(item => item.status === 'confirmed').length ? bookings.filter(item => item.status === 'confirmed').map(item => <div class="booking-card" key={item.id}><div class="booking-time">{item.start.slice(11, 16)}<span>{item.end.slice(11, 16)}</span></div><div class="booking-details"><strong>{item.client_name}</strong><span>{item.service_name}</span><a href={`tel:${item.phone}`}>{item.phone}</a></div><button class="quiet-button" title="Отменить запись" onClick={() => cancelBooking(item.id)}>×</button></div>) : <div class="empty-state"><span>✳</span><strong>Пока свободно</strong><p>На этот день ещё нет записей.</p></div>}
+                    {bookings.filter(item => item.status === 'confirmed').length ? bookings.filter(item => item.status === 'confirmed').map(item => <div class="booking-card" key={item.id}><div class="booking-time">{item.start.slice(11, 16)}<span>{item.end.slice(11, 16)}</span></div><div class="booking-details"><strong>{item.client_name}</strong><span>{item.service_name}</span>{item.contact_unlocked ? <a href={`tel:${item.phone}`}>{item.phone}</a> : <span title="Продлите доступ, чтобы открыть телефон">{item.phone} · скрыт до продления</span>}{item.paid_amount_kopecks != null ? <small>Оплачено: {(item.paid_amount_kopecks / 100).toLocaleString('ru-RU')} ₽</small> : subscription?.active && subscription.plan === 'finance' ? <div class="booking-payment"><input aria-label="Фактическая сумма оплаты" type="number" min="0.01" step="0.01" placeholder="Сумма, ₽" value={paidAmounts[item.id] ?? ''} onInput={event => setPaidAmounts({ ...paidAmounts, [item.id]: event.currentTarget.value })} /><button onClick={() => markPaid(item)} disabled={saving || !paidAmounts[item.id]}>Оплачено</button></div> : null}</div><button class="quiet-button" title="Отменить запись" onClick={() => cancelBooking(item.id)}>×</button></div>) : <div class="empty-state"><span>✳</span><strong>Пока свободно</strong><p>На этот день ещё нет записей.</p></div>}
                   </div>
                 </section>
               </div>
@@ -255,7 +316,7 @@ export function Admin() {
                   <div class="panel-header"><div><span class="panel-kicker">ВРУЧНУЮ</span><h2>Добавить запись</h2></div><span class="form-icon">＋</span></div>
                   <form onSubmit={addBooking} class="admin-form">
                     <label>Услуга<select value={bookingForm.service_id} onChange={event => setBookingForm({ ...bookingForm, service_id: event.currentTarget.value, start: '' })} required><option value="">Выберите услугу</option>{services.filter(item => item.active).map(item => <option value={item.id}>{item.name} · {item.duration_min} мин</option>)}</select></label>
-                    <div class="form-row"><label>Дата<input type="date" min={today} value={bookingForm.date} onInput={event => setBookingForm({ ...bookingForm, date: event.currentTarget.value, start: '' })} required /></label><label>Свободное время<select value={bookingForm.start} onChange={event => setBookingForm({ ...bookingForm, start: event.currentTarget.value })} required><option value="">Выберите время</option>{slots.map(slot => <option value={slot}>{slot.slice(11)}</option>)}</select></label></div>
+                    <div class="form-row"><label>Дата<input type="date" min={today} value={bookingForm.date} onInput={event => setBookingForm({ ...bookingForm, date: event.currentTarget.value, start: '' })} required /></label><label>Свободное время<select value={bookingForm.start} onChange={event => setBookingForm({ ...bookingForm, start: event.currentTarget.value })} required><option value="">Выберите</option>{slots.map(slot => <option value={slot}>{slot.slice(11)}</option>)}</select></label></div>
                     <div class="form-row"><label>Имя<input value={bookingForm.client_name} onInput={event => setBookingForm({ ...bookingForm, client_name: event.currentTarget.value })} placeholder="Имя клиента" required /></label><label>Телефон<input type="tel" value={bookingForm.phone} onInput={event => setBookingForm({ ...bookingForm, phone: event.currentTarget.value })} placeholder="+7 999 123-45-67" required /></label></div>
                     <button class="dark-button" disabled={saving || !bookingForm.start}>Добавить запись <span>→</span></button>
                   </form>
@@ -271,6 +332,14 @@ export function Admin() {
                 </section>
               </div>
             </>
+          ) : tab === 'finance' ? (
+            <div class="finance-page">
+              <div class="finance-toolbar"><div class="month-nav"><button onClick={() => navigateMonth(-1)}>←</button><strong>{formatDate(month + '-01', { month: 'long', year: 'numeric' })}</strong><button onClick={() => navigateMonth(1)}>→</button></div><span>Внутренний учёт доходов и расходов</span></div>
+              <div class="finance-summary"><article><span>Доходы</span><strong>{((finance?.summary.income_kopecks || 0) / 100).toLocaleString('ru-RU')} ₽</strong></article><article><span>Расходы</span><strong>{((finance?.summary.expenses_kopecks || 0) / 100).toLocaleString('ru-RU')} ₽</strong></article><article><span>Результат</span><strong>{((finance?.summary.net_kopecks || 0) / 100).toLocaleString('ru-RU')} ₽</strong></article></div>
+              <div class="finance-layout"><section class="panel finance-list"><div class="panel-header"><div><span class="panel-kicker">ОПЕРАЦИИ</span><h2>За месяц</h2></div></div>{finance?.transactions.length ? finance.transactions.map(item => <div class="finance-row" key={item.id}><div><strong>{item.description}</strong><small>{formatMoment(item.occurred_at)}{item.booking_id ? ` · запись №${item.booking_id}` : ''}</small></div><b class={item.kind === 'income' ? 'positive' : 'negative'}>{item.kind === 'income' ? '+' : '−'} {(item.amount_kopecks / 100).toLocaleString('ru-RU')} ₽</b></div>) : <div class="finance-empty">В этом месяце операций пока нет.</div>}</section><section class="panel form-panel"><div class="panel-header"><div><span class="panel-kicker">ВРУЧНУЮ</span><h2>Новая операция</h2></div></div>{finance?.writable ? <form class="admin-form" onSubmit={addTransaction}><label>Тип<select value={entry.kind} onChange={event => setEntry({ ...entry, kind: event.currentTarget.value })}><option value="income">Доход</option><option value="expense">Расход</option></select></label><label>Дата операции<input type="date" value={entry.date} onInput={event => setEntry({ ...entry, date: event.currentTarget.value })} required /></label><label>Сумма, ₽<input type="number" min="0.01" step="0.01" value={entry.amount} onInput={event => setEntry({ ...entry, amount: event.currentTarget.value })} required /></label><label>Описание<input value={entry.description} onInput={event => setEntry({ ...entry, description: event.currentTarget.value })} required /></label><button class="dark-button" disabled={saving}>Добавить <span>→</span></button></form> : <p class="finance-readonly">История доступна для просмотра. Добавление операций открывается на активном тарифе «Запись + финансы».</p>}</section></div>
+            </div>
+          ) : tab === 'subscription' ? (
+            <div class="subscription-page"><section class="panel subscription-main"><span class="panel-kicker">ВАШ ТАРИФ</span><h2>{subscription?.plan === 'finance' ? 'Запись + финансы' : 'AI-запись'}</h2><p>{subscription?.mode === 'trial' ? 'Пробный период активен' : subscription?.mode === 'paid' ? 'Подписка активна' : 'Подписка закончилась'}. {subscription?.until ? `Доступ до ${new Date(subscription.until).toLocaleDateString('ru-RU')}.` : ''}</p><div class="usage-meter"><span style={{ width: `${Math.min(100, 100 * (subscription?.used || 0) / (subscription?.limit || 1))}%` }} /></div><small>Ответов AI: {subscription?.used || 0} из {subscription?.limit || 0}. {subscription?.mode === 'expired' ? 'После лимита клиенты записываются через форму.' : ''}</small><div class="activation-buttons"><button disabled={saving || requests.some(item => item.status === 'pending')} onClick={() => requestActivation('booking')}>Запросить AI-запись · 499 ₽/мес</button><button disabled={saving || requests.some(item => item.status === 'pending')} onClick={() => requestActivation('finance')}>Запросить запись + финансы · 999 ₽/мес</button></div><p class="subscription-help">Оплата проходит вне CRM. После получения оплаты администратор платформы активирует выбранный тариф на месяц.</p></section><section class="panel subscription-links"><span class="panel-kicker">ДЛЯ ВАШИХ КЛИЕНТОВ</span><h2>Страница и виджет</h2><label>Ссылка на запись<input readOnly value={business ? `${location.origin}/b/${business.slug}/book` : ''} onFocus={event => event.currentTarget.select()} /></label><label>Код виджета<code>{business ? `<script src="${location.origin}/embed.js" data-business="${business.slug}" data-auto="true" defer></script>` : ''}</code></label><p>Вставьте код перед закрывающим тегом страницы вашего сайта.</p></section><section class="panel subscription-history"><span class="panel-kicker">ЗАПРОСЫ</span><h2>История продлений</h2>{requests.length ? requests.map(item => <div><span>{item.plan === 'finance' ? 'Запись + финансы' : 'AI-запись'}</span><strong>{item.status === 'pending' ? 'Ожидает' : item.status === 'approved' ? 'Активирован' : 'Отклонён'}</strong></div>) : <p>Запросов пока нет.</p>}</section></div>
           ) : (
             <div class="settings-layout">
               <section class="panel settings-panel"><div class="panel-header"><div><span class="panel-kicker">ИНФОРМАЦИЯ ДЛЯ СЕКРЕТАРЯ</span><h2>О студии</h2></div></div>{business && <form class="admin-form" onSubmit={saveBusiness}><label>Название<input value={business.name} onInput={event => setBusiness({ ...business, name: event.currentTarget.value })} required /></label><label>Описание<textarea rows="3" value={business.description} onInput={event => setBusiness({ ...business, description: event.currentTarget.value })} /></label><div class="form-row"><label>Адрес<input value={business.address} onInput={event => setBusiness({ ...business, address: event.currentTarget.value })} /></label><label>Телефон<input value={business.phone} onInput={event => setBusiness({ ...business, phone: event.currentTarget.value })} /></label></div><label>Правила и ответы на вопросы<textarea rows="4" value={business.faq} onInput={event => setBusiness({ ...business, faq: event.currentTarget.value })} /></label><button class="dark-button" disabled={saving}>Сохранить информацию <span>→</span></button></form>}</section>

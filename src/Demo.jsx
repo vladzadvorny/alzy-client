@@ -15,6 +15,7 @@ export function Demo() {
     const script = document.createElement('script');
     script.src = '/embed.js';
     script.dataset.auto = 'true';
+    script.dataset.business = 'demo';
     document.body.appendChild(script);
     return () => {
       window.AlzyWidget?.unmount();
@@ -26,7 +27,7 @@ export function Demo() {
     <div class="demo">
       <header class="site-header">
         <a href="/demo" class="wordmark"><span class="wordmark-mark">✳</span> линия<span class="wordmark-period">.</span></a>
-        <nav><a href="#services">Услуги</a><a href="#about">О студии</a><a href="/admin">Для администратора</a></nav>
+        <nav><a href="#services">Услуги</a><a href="#about">О студии</a><a href="/">О CRM</a></nav>
         <button class="header-book" onClick={() => window.AlzyWidget?.open()}>Записаться <span>↗</span></button>
       </header>
 
