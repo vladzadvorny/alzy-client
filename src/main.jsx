@@ -9,25 +9,30 @@ import { NotFound } from './pages/NotFound.jsx';
 import './styles.css';
 
 function App() {
-  return <LocationProvider><Router>
-    <Route path="/" component={Home} />
-    <Route path="/demo" component={Demo} />
-    <Route path="/register" component={Register} />
-    <Route path="/app/:rest*" component={Admin} />
-    <Route path="/admin/:rest*" component={Admin} />
-    <Route path="/platform/:rest*" component={Platform} />
-    <Route path="/b/:slug/book" component={Booking} />
-    <Route path="/b/:slug/widget" component={Widget} />
-    <Route path="/book" component={Booking} />
-    <Route path="/widget" component={Widget} />
-    <Route default component={NotFound} />
-  </Router></LocationProvider>;
+  return (
+    <LocationProvider>
+      <Router>
+        <Route path="/" component={Home} />
+        <Route path="/demo" component={Demo} />
+        <Route path="/register" component={Register} />
+        <Route path="/app/:rest*" component={Admin} />
+        <Route path="/admin/:rest*" component={Admin} />
+        <Route path="/platform/:rest*" component={Platform} />
+        <Route path="/b/:slug/book" component={Booking} />
+        <Route path="/b/:slug/widget" component={Widget} />
+        <Route path="/book" component={Booking} />
+        <Route path="/widget" component={Widget} />
+        <Route default component={NotFound} />
+      </Router>
+    </LocationProvider>
+  );
 }
 
 if (typeof window !== 'undefined') {
   const root = document.getElementById('app');
   const data = document.getElementById('prerender-data');
-  const prerenderedPath = data && new URL(JSON.parse(data.textContent).url, location.origin).pathname;
+  const prerenderedPath =
+    data && new URL(JSON.parse(data.textContent).url, location.origin).pathname;
   const normalizePath = path => path.replace(/\/+$/, '') || '/';
   if (prerenderedPath && normalizePath(prerenderedPath) !== normalizePath(location.pathname)) {
     // Vite preview can use the prerendered home page as an SPA fallback.

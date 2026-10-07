@@ -12,18 +12,27 @@ export async function api(path, options = {}) {
 
 export function todayMoscow() {
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit'
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
   }).formatToParts(new Date());
   const part = type => parts.find(item => item.type === type).value;
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
 export function formatDate(date, options = {}) {
-  return new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', ...options }).format(new Date(date + 'T12:00:00Z'));
+  return new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', ...options }).format(
+    new Date(date + 'T12:00:00Z')
+  );
 }
 
 export function formatMoment(value) {
   return new Intl.DateTimeFormat('ru-RU', {
-    timeZone: 'Europe/Moscow', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+    timeZone: 'Europe/Moscow',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit'
   }).format(new Date(value + ':00+03:00'));
 }
