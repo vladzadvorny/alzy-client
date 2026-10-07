@@ -56,3 +56,38 @@
 .activation-buttons button{min-height:50px;font-size:14px}
 .platform-actions button{min-height:44px;font-size:13px}
 @media(max-width:760px){.calendar-day small{font-size:9px}.calendar-day span{font-size:12px}}
+
+/* Owner dashboard uses the same header and floating navigation at every width. */
+.admin-page{display:block;min-height:100dvh;background:#f6f7f2}
+.admin-header{position:sticky;top:0;z-index:20;background:rgba(246,247,242,.94);border-bottom:1px solid #e2e9df;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.admin-header-inner{height:76px;max-width:1450px;margin:0 auto;padding:0 4.5vw;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.admin-header .product-logo{white-space:nowrap}
+.admin-header-actions{display:flex;align-items:center;gap:9px}
+.admin-header-action{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 15px;border:1px solid #dfe7da;border-radius:10px;background:#fff;color:#405542;font-size:12px;font-weight:800;white-space:nowrap}
+.admin-header-action:hover{background:#edf4e8}
+.admin-header-action:focus-visible,.admin-nav-item:focus-visible{outline:3px solid #9abe79;outline-offset:3px}
+.admin-main{min-width:0}
+.admin-content{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+.admin-bottom-nav{position:fixed;z-index:30;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(540px,calc(100% - 24px));display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:7px;border:1px solid #405545;border-radius:23px;background:#24342b;box-shadow:0 16px 40px #1d332b3d}
+.admin-nav-item{min-width:0;min-height:64px;padding:7px 4px 6px;border:0;border-radius:17px;background:transparent;color:#becdbe;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:800;white-space:nowrap;line-height:1.2}
+.admin-nav-item svg{width:21px;height:21px;flex:none}
+.admin-nav-item:hover{background:#3b5040;color:#fff}
+.admin-nav-item.active,.admin-nav-item.active:hover{background:#deedcc;color:#233b2c}
+@media(max-width:760px){
+  .admin-header-inner{height:68px;padding:0 16px}
+  .admin-header .product-logo{font-size:25px}
+  .admin-header .product-logo span{font-size:27px}
+  .admin-header-actions{gap:6px}
+  .admin-header-action{min-height:40px;padding:0 10px;font-size:11px}
+  .admin-content{padding:28px 14px calc(145px + env(safe-area-inset-bottom,0px))}
+  .admin-heading{align-items:flex-start;flex-direction:column;gap:7px}
+  .admin-date{display:block;margin:0}
+  .service-admin-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:14px 0;border-bottom:1px solid #edf0e9}
+  .service-admin-row input:first-child{grid-column:1/-1}
+  .service-admin-row label{grid-column:1;min-height:44px;font-size:12px}
+  .service-admin-row .outline-button{grid-column:2;width:100%;min-width:0}
+}
+@media(max-width:430px){
+  .service-admin-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .service-admin-row .outline-button{grid-column:2}
+}

@@ -27,6 +27,23 @@ function ErrorNote({ text }) {
   return text ? <div class="admin-error" role="alert">{text}</div> : null;
 }
 
+const sections = [
+  { id: 'calendar', label: 'Календарь', title: 'Календарь записей' },
+  { id: 'finance', label: 'Финансы', title: 'Финансы' },
+  { id: 'subscription', label: 'Тариф', title: 'Тариф и доступ' },
+  { id: 'settings', label: 'Настройки', title: 'Настройки компании' }
+];
+
+function SectionIcon({ name }) {
+  const shapes = {
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18M8 14h2M14 14h2M8 18h2" /></>,
+    finance: <><path d="M3 20h18M5 16l5-5 4 3 5-7" /><path d="M15 7h4v4" /></>,
+    subscription: <><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+    settings: <><path d="M12 3.5 13.5 5l2-.3.8 2 2 .8-.3 2L19.5 11l-1.5 1.5.3 2-2 .8-.8 2-2-.3-1.5 1.5-1.5-1.5-2 .3-.8-2-2-.8.3-2L4.5 11 6 9.5l-.3-2 2-.8.8-2 2 .3L12 3.5Z" /><circle cx="12" cy="11" r="2.5" /></>
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{shapes[name]}</svg>;
+}
+
 export function Admin() {
   const [auth, setAuth] = useState(null);
   const [email, setEmail] = useState('');
@@ -254,6 +271,12 @@ export function Admin() {
     setHours(previous => previous.map((item, position) => position === index ? { ...item, ...patch } : item));
   }
 
+  function selectTab(nextTab) {
+    if (nextTab === tab) return;
+    setTab(nextTab);
+    window.scrollTo(0, 0);
+  }
+
   if (auth === null) return <div class="admin-loading">Загружаем кабинет…</div>;
   if (auth === false) return (
     <div class="login-page">
@@ -273,25 +296,22 @@ export function Admin() {
 
   return (
     <div class="admin-page">
-      <aside class="admin-sidebar">
-        <a href="/" class="product-logo"><span>✳</span> alzy</a>
-        <div class="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <button class={tab === 'calendar' ? 'side-link active' : 'side-link'} onClick={() => setTab('calendar')}><span>▦</span> Календарь</button>
-        <button class={tab === 'finance' ? 'side-link active' : 'side-link'} onClick={() => setTab('finance')}><span>₽</span> Финансы</button>
-        <button class={tab === 'subscription' ? 'side-link active' : 'side-link'} onClick={() => setTab('subscription')}><span>✦</span> Тариф</button>
-        <button class={tab === 'settings' ? 'side-link active' : 'side-link'} onClick={() => setTab('settings')}><span>⚙</span> Настройки</button>
-        <div class="sidebar-spacer" />
-        <a class="side-link" href="/demo"><span>↗</span> Демо-страница</a>
-        <button class="side-link" onClick={logout}><span>⇥</span> Выйти</button>
-      </aside>
+      <header class="admin-header">
+        <div class="admin-header-inner">
+          <a href="/" class="product-logo" aria-label="Alzy — главная"><span>✳</span> alzy</a>
+          <div class="admin-header-actions">
+            <a href="/demo" class="admin-header-action">Демо <span aria-hidden="true">↗</span></a>
+            <button type="button" class="admin-header-action" onClick={logout} disabled={saving}>Выйти</button>
+          </div>
+        </div>
+      </header>
 
       <main class="admin-main">
-        <div class="mobile-admin-nav"><span class="wordmark">✳ alzy</span>{['calendar', 'finance', 'subscription', 'settings'].map(item => <button class={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{({ calendar: 'Календарь', finance: 'Финансы', subscription: 'Тариф', settings: 'Настройки' })[item]}</button>)}<button onClick={logout}>Выйти</button></div>
         <div class="admin-content">
-          <div class="admin-heading"><div><div class="eyebrow"><span /> {business?.name?.toUpperCase() || 'КАБИНЕТ КОМПАНИИ'}</div><h1>{({ calendar: 'Календарь записей', finance: 'Финансы', subscription: 'Тариф и доступ', settings: 'Настройки компании' })[tab]}</h1></div><span class="admin-date">{formatDate(today, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+          <div class="admin-heading"><div><div class="eyebrow"><span /> {business?.name?.toUpperCase() || 'КАБИНЕТ КОМПАНИИ'}</div><h1>{sections.find(section => section.id === tab)?.title}</h1></div><span class="admin-date">{formatDate(today, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
           <ErrorNote text={error} />
           {notice && <div class="admin-notice">{notice}</div>}
-          {subscription && <div class="subscription-strip"><span>{subscription.mode === 'trial' ? 'Пробный период' : subscription.mode === 'paid' ? 'Тариф активен' : 'Доступ закончился'} · {subscription.plan === 'finance' ? 'Запись + финансы' : 'AI-запись'}</span><span>AI: {subscription.used} / {subscription.limit}</span><button onClick={() => setTab('subscription')}>Управлять →</button></div>}
+          {subscription && <div class="subscription-strip"><span>{subscription.mode === 'trial' ? 'Пробный период' : subscription.mode === 'paid' ? 'Тариф активен' : 'Доступ закончился'} · {subscription.plan === 'finance' ? 'Запись + финансы' : 'AI-запись'}</span><span>AI: {subscription.used} / {subscription.limit}</span><button onClick={() => selectTab('subscription')}>Управлять →</button></div>}
 
           {tab === 'calendar' ? (
             <>
@@ -349,6 +369,9 @@ export function Admin() {
           )}
         </div>
       </main>
+      <nav class="admin-bottom-nav" aria-label="Разделы кабинета">
+        {sections.map(section => <button key={section.id} type="button" class={tab === section.id ? 'admin-nav-item active' : 'admin-nav-item'} aria-pressed={tab === section.id} onClick={() => selectTab(section.id)}><SectionIcon name={section.id} /><span>{section.label}</span></button>)}
+      </nav>
     </div>
   );
 }
