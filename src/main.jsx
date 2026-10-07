@@ -1,11 +1,11 @@
 import { LocationProvider, Router, Route, hydrate, prerender as renderStatic } from 'preact-iso';
-import { Demo, title as demoTitle } from './Demo.jsx';
-import { Admin } from './Admin.jsx';
-import { Home, title as homeTitle } from './Home.jsx';
-import { Register } from './Register.jsx';
-import { Platform } from './Platform.jsx';
-import { Booking, Widget } from './Booking.jsx';
-import { NotFound } from './NotFound.jsx';
+import { Demo, title as demoTitle } from './pages/Demo.jsx';
+import { Admin } from './pages/Admin.jsx';
+import { Home, title as homeTitle } from './pages/Home.jsx';
+import { Register } from './pages/Register.jsx';
+import { Platform } from './pages/Platform.jsx';
+import { Booking, Widget } from './pages/Booking.jsx';
+import { NotFound } from './pages/NotFound.jsx';
 import './styles.css';
 
 function App() {

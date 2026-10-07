@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api, formatDate, formatMoment, todayMoscow } from './api.js';
+import { api, formatDate, formatMoment, todayMoscow } from '../utils/api.js';
 
 const weekdays = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const today = todayMoscow();

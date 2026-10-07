@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
-import { api } from './api.js';
+import { api } from '../utils/api.js';
 
 export function Register() {
   useEffect(() => { document.title = 'Alzy — AI-секретарь для малого бизнеса'; }, []);

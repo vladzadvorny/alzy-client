@@ -1,5 +1,5 @@
 import { useEffect } from 'preact/hooks';
-import { Chat } from './Chat.jsx';
+import { Chat } from '../Chat.jsx';
 
 const title = 'Онлайн-запись — Alzy';
 

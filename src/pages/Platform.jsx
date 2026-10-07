@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api } from './api.js';
+import { api } from '../utils/api.js';
 
 export function Platform() {
   useEffect(() => { document.title = 'Alzy — AI-секретарь для малого бизнеса'; }, []);

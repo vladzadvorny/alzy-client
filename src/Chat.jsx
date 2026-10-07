@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { api, todayMoscow } from './api.js';
+import { api, todayMoscow } from './utils/api.js';
 
 export function Chat({ compact = false, slug = 'demo' }) {
   const base = `/public/${encodeURIComponent(slug)}`;
